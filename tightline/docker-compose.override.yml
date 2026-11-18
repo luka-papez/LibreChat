@@ -1,0 +1,42 @@
+# Deployment overrides for uservm-lpapez, on the fork's `demo` branch. The repo root's
+# docker-compose.override.yml is a symlink to this file (upstream gitignores that name).
+#
+# Home is NFS (sec=sys, root_squash, mode 700), so dockerd -- root, squashed to nobody --
+# cannot bind-mount anything from it. Every bind mount in docker-compose.yml is replaced
+# with a named volume on the local disk, and the per-UID `user:` lines are dropped so
+# each image runs as its own user and owns the volume it initialises.
+#
+# The api read its config from a bind-mounted /app/.env; it gets the same file through
+# env_file instead, which compose reads on the client side.
+services:
+  api:
+    # Stock image plus Tight Line branding; see tightline/Dockerfile. pull_policy build
+    # means `up` rebuilds it (cached, seconds) rather than trying to pull this tag.
+    image: tightline/librechat:demo
+    build:
+      context: ./tightline
+    pull_policy: build
+    user: !reset null
+    env_file: .env
+    volumes: !override
+      - lc-images:/app/client/public/images
+      - lc-uploads:/app/uploads
+      - lc-logs:/app/logs
+      - lc-skill:/app/skill
+      - librechat-data:/app/data
+  mongodb:
+    user: !reset null
+    volumes: !override
+      - lc-mongo:/data/db
+  meilisearch:
+    user: !reset null
+    volumes: !override
+      - lc-meili:/meili_data
+
+volumes:
+  lc-images:
+  lc-uploads:
+  lc-logs:
+  lc-skill:
+  lc-mongo:
+  lc-meili:
